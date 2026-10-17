@@ -1,0 +1,128 @@
+### Login
+POST http://localhost:5246/api/auth/login
+Content-Type: application/json
+
+{
+  "userName": "your_name",
+  "password": "your_password"
+}
+
+###
+POST http://localhost:5246/api/products
+Authorization: Bearer your_token
+Content-Type: application/json
+
+{
+  "externalKey": "test-product-001",
+  "name": "Test product",
+  "description": "Test product description",
+  "price": 99.90,
+  "categoryIds": ["240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"],
+  "tagIds": [],
+  "images": []
+}
+
+###
+PUT http://localhost:5246/api/products/93193811-1606-4cb3-b401-bc7187554d1a/publication
+Authorization: Bearer your_token
+Content-Type: application/json
+
+{
+  "isPublished": false
+}
+
+###
+GET http://localhost:5246/api/products
+Authorization: Bearer your_token
+Content-Type: application/json
+
+###
+GET http://localhost:5246/api/products
+
+###
+GET http://localhost:5246/api/products/39a8de6f-5641-4903-96db-a80a148fd7e0
+###
+POST http://localhost:5246/api/products
+Content-Type: application/json
+
+{
+  "externalKey": "test-0012",
+  "name": "Asswalker22",
+  "description": "Test description",
+  "price": 19.99,
+  "categoryIds": [
+    "240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"
+  ],
+  "tagIds": [
+    "abee4c32-ad33-447c-a94f-f842284a6943"
+  ],
+  "images": [
+    {
+      "url": "",
+      "altText": "Test product image",
+      "displayOrder": 0
+    }
+  ]
+}
+
+###
+GET http://localhost:5246/api/categories
+
+###
+POST http://localhost:5246/api/categories
+Content-Type: application/json
+
+{
+  "name": "Test Category"
+}
+
+###
+GET http://localhost:5246/api/tags
+
+###
+POST http://localhost:5246/api/tags
+Content-Type: application/json
+
+{
+  "name": "test tag"
+}
+
+
+###
+PUT http://localhost:5246/api/products/39a8de6f-5641-4903-96db-a80a148fd7e0
+Content-Type: application/json
+
+{
+  "externalKey": "test-key",
+  "name": "Fallout",
+  "description": "blablablablabla",
+  "price": 24.50,
+  "categoryIds": [
+    "240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"
+  ],
+  "tagIds": [
+    "abee4c32-ad33-447c-a94f-f842284a6943"
+  ],
+  "images": [
+    {
+      "url": "",
+      "altText": "Fallout product image",
+      "displayOrder": 0
+    }
+  ]
+}
+
+###
+GET http://localhost:5246/api/products?pageSize=500
+###
+GET http://localhost:5246/api/products?sort=name&order=asc
+###
+GET http://localhost:5246/api/products?search=Fallout
+
+
+
+###
+DELETE http://localhost:5246/api/products/a11ce5f6-68e5-48c3-a657-7200da829d01
+
+###
+GET http://localhost:5246/api/products?createdFrom=2026-12-31&createdTo=2026-01-01
