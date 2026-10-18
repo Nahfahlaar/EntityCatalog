@@ -152,7 +152,7 @@ public class ProductService
             "desc",
             StringComparison.OrdinalIgnoreCase);
 
-        return filter.Sort?.ToLowerInvariant() switch
+        var sortedQuery = filter.Sort?.ToLowerInvariant() switch
         {
             "createdat" => descending
                 ? query.OrderByDescending(e => e.CreatedAt)
@@ -166,6 +166,8 @@ public class ProductService
                 ? query.OrderByDescending(e => e.Name)
                 : query.OrderBy(e => e.Name)
         };
+
+        return sortedQuery.ThenBy(e => e.Id);
     }
 
     public async Task<GetProductDto?> GetByIdAsync(Guid id, bool includeUnpublished = false)

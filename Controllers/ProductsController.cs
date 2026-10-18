@@ -34,6 +34,12 @@ public class ProductsController : ControllerBase
                 title: "Invalid pageSize",
                 detail: "PageSize must be between 1 and 100.");
 
+        if (query.Page > (long)int.MaxValue / query.PageSize + 1)
+            return Problem(
+                statusCode: StatusCodes.Status400BadRequest,
+                title: "Invalid page",
+                detail: "The requested page is too large.");
+
         var validSorts = new[] { "name", "createdat", "updatedat" };
 
         if (!string.IsNullOrWhiteSpace(query.Sort) &&

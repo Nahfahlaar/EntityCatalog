@@ -1,128 +1,116 @@
-### Login
-POST http://localhost:5246/api/auth/login
+@baseUrl = http://localhost:5246
+@editorToken = replace-with-editor-access-token
+@categoryId = replace-with-category-guid
+@tagId = replace-with-tag-guid
+@productId = replace-with-product-guid
+
+### Войдите под пользователем с ролью Editor и скопируйте accessToken в @editorToken.
+POST {{baseUrl}}/api/auth/login
 Content-Type: application/json
 
 {
-  "userName": "your_name",
-  "password": "your_password"
+  "userName": "имя-пользователя",
+  "password": "пароль-пользователя"
 }
 
+### Публичное чтение категорий и тегов
+GET {{baseUrl}}/api/categories
+
 ###
-POST http://localhost:5246/api/products
-Authorization: Bearer your_token
+GET {{baseUrl}}/api/tags
+
+### Создайте категорию; скопируйте её id из ответа в @categoryId.
+POST {{baseUrl}}/api/categories
+Authorization: Bearer {{editorToken}}
 Content-Type: application/json
 
 {
-  "externalKey": "test-product-001",
-  "name": "Test product",
-  "description": "Test product description",
-  "price": 99.90,
-  "categoryIds": ["240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"],
-  "tagIds": [],
+  "name": "Books"
+}
+
+### Создайте тег; скопируйте его id из ответа в @tagId.
+POST {{baseUrl}}/api/tags
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
+
+{
+  "name": "Fiction"
+}
+
+### Создайте товар; categoryIds должен содержать ID существующей категории.
+POST {{baseUrl}}/api/products
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
+
+{
+  "externalKey": "book-001",
+  "name": "Example book",
+  "description": "Описание товара",
+  "price": 19.99,
+  "categoryIds": ["{{categoryId}}"],
+  "tagIds": ["{{tagId}}"],
   "images": []
 }
 
-###
-PUT http://localhost:5246/api/products/93193811-1606-4cb3-b401-bc7187554d1a/publication
-Authorization: Bearer your_token
+### Скопируйте id созданного товара из ответа в @productId.
+
+### Публичный список опубликованных товаров; поддерживаются фильтры и пагинация.
+GET {{baseUrl}}/api/products?search=book&categoryId={{categoryId}}&tagId={{tagId}}&createdFrom=2026-01-01T00:00:00Z&createdTo=2026-12-31T23:59:59Z&sort=createdAt&order=desc&page=1&pageSize=20
+
+### Editor может получить в том числе неопубликованный товар.
+GET {{baseUrl}}/api/products/{{productId}}
+Authorization: Bearer {{editorToken}}
+
+### Полное обновление товара; все обязательные поля CreateProductDto передаются снова.
+PUT {{baseUrl}}/api/products/{{productId}}
+Authorization: Bearer {{editorToken}}
 Content-Type: application/json
 
 {
-  "isPublished": false
-}
-
-###
-GET http://localhost:5246/api/products
-Authorization: Bearer your_token
-Content-Type: application/json
-
-###
-GET http://localhost:5246/api/products
-
-###
-GET http://localhost:5246/api/products/39a8de6f-5641-4903-96db-a80a148fd7e0
-###
-POST http://localhost:5246/api/products
-Content-Type: application/json
-
-{
-  "externalKey": "test-0012",
-  "name": "Asswalker22",
-  "description": "Test description",
-  "price": 19.99,
-  "categoryIds": [
-    "240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"
-  ],
-  "tagIds": [
-    "abee4c32-ad33-447c-a94f-f842284a6943"
-  ],
-  "images": [
-    {
-      "url": "",
-      "altText": "Test product image",
-      "displayOrder": 0
-    }
-  ]
-}
-
-###
-GET http://localhost:5246/api/categories
-
-###
-POST http://localhost:5246/api/categories
-Content-Type: application/json
-
-{
-  "name": "Test Category"
-}
-
-###
-GET http://localhost:5246/api/tags
-
-###
-POST http://localhost:5246/api/tags
-Content-Type: application/json
-
-{
-  "name": "test tag"
-}
-
-
-###
-PUT http://localhost:5246/api/products/39a8de6f-5641-4903-96db-a80a148fd7e0
-Content-Type: application/json
-
-{
-  "externalKey": "test-key",
-  "name": "Fallout",
-  "description": "blablablablabla",
+  "externalKey": "book-001",
+  "name": "Updated example book",
+  "description": "Обновлённое описание",
   "price": 24.50,
-  "categoryIds": [
-    "240f5313-2b5e-4ae3-b52e-06bffd2eb3d5"
-  ],
-  "tagIds": [
-    "abee4c32-ad33-447c-a94f-f842284a6943"
-  ],
-  "images": [
-    {
-      "url": "",
-      "altText": "Fallout product image",
-      "displayOrder": 0
-    }
-  ]
+  "categoryIds": ["{{categoryId}}"],
+  "tagIds": ["{{tagId}}"],
+  "images": []
 }
 
-###
-GET http://localhost:5246/api/products?pageSize=500
-###
-GET http://localhost:5246/api/products?sort=name&order=asc
-###
-GET http://localhost:5246/api/products?search=Fallout
+### Публикация товара
+PUT {{baseUrl}}/api/products/{{productId}}/publication
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
 
+{
+  "isPublished": true
+}
 
+### Обновление категории
+PUT {{baseUrl}}/api/categories/{{categoryId}}
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated books"
+}
+
+### Обновление тега
+PUT {{baseUrl}}/api/tags/{{tagId}}
+Authorization: Bearer {{editorToken}}
+Content-Type: application/json
+
+{
+  "name": "Updated fiction"
+}
+
+### Удалите товар перед категорией и тегом: связанные справочники удалить нельзя.
+DELETE {{baseUrl}}/api/products/{{productId}}
+Authorization: Bearer {{editorToken}}
+
+### После удаления товара удалите категорию и тег.
+DELETE {{baseUrl}}/api/categories/{{categoryId}}
+Authorization: Bearer {{editorToken}}
 
 ###
-DELETE http://localhost:5246/api/products/a11ce5f6-68e5-48c3-a657-7200da829d01
-
-###
-GET http://localhost:5246/api/products?createdFrom=2026-12-31&createdTo=2026-01-01
+DELETE {{baseUrl}}/api/tags/{{tagId}}
+Authorization: Bearer {{editorToken}}

@@ -25,6 +25,17 @@ namespace EntityCatalog.Tests;
 public class ProductAccessTests
 {
     [Fact]
+    public async Task ProductListRejectsPageValuesThatWouldOverflowSkip()
+    {
+        using var host = new ApiTestHost();
+        using var client = host.CreateClient();
+
+        var response = await client.GetAsync("/api/products?page=2147483647&pageSize=100");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
     public async Task AnonymousAndNonEditorReadsOnlyPublishedProductsAndRelatedData()
     {
         using var host = new ApiTestHost();

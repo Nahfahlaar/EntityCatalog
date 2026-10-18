@@ -1,52 +1,99 @@
 # EntityCatalog
 
-## Local configuration
+EntityCatalog — учебный ASP.NET Core Web API для каталога товаров. API поддерживает товары, категории, теги, изображения товаров, публикацию и вход пользователей с ролью `Editor`.
 
-The project reads the database connection string from `ConnectionStrings:DefaultConnection` and JWT settings from `Jwt:Issuer`, `Jwt:Audience`, and `Jwt:SigningKey`. Keep these values in .NET User Secrets locally and in the deployment environment for hosted instances. Do not add secret values to `appsettings.json` or commit them.
+## Технологии
 
-The project already has a `UserSecretsId` in its project file. Set local values from the project directory:
+- C# и .NET 10
+- ASP.NET Core Web API
+- Entity Framework Core 10
+- PostgreSQL и Npgsql; для категорий и тегов используется расширение PostgreSQL `citext`
+- ASP.NET Core Identity и JWT Bearer-аутентификация на HMAC-SHA256
+- xUnit
+
+## Структура
+
+- `Controllers` — HTTP-маршруты API.
+- `Services` — операции с товарами, категориями, тегами и аутентификацией.
+- `Dtos` — модели запросов и ответов API и их валидация.
+- `Products` — сущности каталога.
+- `Data` — `AppDbContext` и конфигурация модели EF Core.
+- `Security` — модель пользователя и настройки JWT.
+- `Migrations` — миграции базы данных.
+- `EntityCatalog.Tests` — API-тесты и интеграционные тесты PostgreSQL.
+
+## Требования и настройка
+
+Нужны .NET 10 SDK и PostgreSQL. Пользователь базы данных должен иметь право создать расширение `citext` при применении начальной миграции. Для команд миграции нужен `dotnet-ef` (если инструмент ещё не установлен: `dotnet tool install --global dotnet-ef`).
+
+Приложение читает строку подключения `ConnectionStrings:DefaultConnection` и настройки `Jwt:Issuer`, `Jwt:Audience`, `Jwt:SigningKey`. Задайте локальные значения через .NET User Secrets из каталога проекта:
 
 ```powershell
+dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<строка подключения к PostgreSQL>"
 dotnet user-secrets set "Jwt:Issuer" "EntityCatalog"
 dotnet user-secrets set "Jwt:Audience" "EntityCatalog.Client"
-dotnet user-secrets set "Jwt:SigningKey" "<random value with at least 32 UTF-8 bytes>"
-dotnet user-secrets set "ConnectionStrings:DefaultConnection" "<your local PostgreSQL connection string>"
+dotnet user-secrets set "Jwt:SigningKey" "<случайный ключ длиной не менее 32 байт UTF-8>"
 ```
 
-Generate a fresh signing key with a cryptographically secure random generator, for example `openssl rand -hex 32`. The application accepts only HMAC-SHA256 JWTs and requires a signing key of at least 32 UTF-8 bytes.
+`Jwt:Issuer`, `Jwt:Audience` и `Jwt:SigningKey` обязательны; приложение проверяет настройки при запуске. Не храните пароли базы данных и ключи подписи в файлах конфигурации, которые попадают в репозиторий. Для размещения приложения передавайте эти значения через хранилище секретов среды.
 
-For deployment, provide these environment variables through the hosting platform's secret manager:
+## Миграции и первый пользователь Editor
 
-```text
-Jwt__Issuer
-Jwt__Audience
-Jwt__SigningKey
-ConnectionStrings__DefaultConnection
+После настройки подключения проверьте целевую базу данных и примените миграции:
+
+```powershell
+dotnet ef database update
 ```
 
-The app fails at startup if issuer, audience, or a sufficiently long signing key is missing.
+Миграции создают схему каталога и таблицы ASP.NET Core Identity. Приложение не применяет миграции автоматически.
 
-## Identity migrations and first Editor
+После применения миграций создайте первого пользователя с ролью `Editor`:
 
-The migration chain is ordered: `20260920174454_InitialCreate`, `20261017141933_AddProductPriceImagesAndPublication`, then the Identity migration generated for this stage. Applying the latest migration also applies any earlier pending migrations. Review the SQL and database target before applying them; the application does not run migrations automatically.
-
-Once the intended database has all migrations applied, provision the first Editor interactively:
-
-```text
+```powershell
 dotnet run -- --create-editor
 ```
 
-This explicit administrative command creates the `Editor` role if needed, prompts for a new username and password (password characters are not displayed), and assigns the new user to the role. It refuses an existing username, refuses to run if an Editor account already exists, and never promotes an existing account. The password is stored only as an ASP.NET Core Identity password hash. Ordinary application startup does not create users or roles.
+Команда запрашивает имя пользователя и пароль в интерактивной консоли. Она создаёт роль `Editor`, если её ещё нет, и не назначает её существующему пользователю. При обычном запуске приложение не создаёт пользователей и роли.
 
-## Authentication API
+## Запуск и авторизация
 
-`POST /api/auth/login` accepts a username and password:
+Запустите приложение из каталога проекта:
 
-```json
-{
-  "userName": "editor-name",
-  "password": "<editor password>"
-}
+```powershell
+dotnet run
 ```
 
-Successful authentication returns a 15-minute JWT in `accessToken`. The token contains the user's ID, username, and current Identity roles, including the `Editor` role. Invalid credentials return `401 Unauthorized`. JWT authentication and authorization middleware are enabled; access rules for product, category, and tag endpoints are not configured yet.
+HTTP-профиль из `Properties/launchSettings.json` использует `http://localhost:5246`; HTTPS-профиль также доступен на `https://localhost:7027`.
+
+Для получения JWT отправьте `POST /api/auth/login` с именем пользователя и паролем. Успешный ответ содержит `accessToken`, действительный 15 минут; неверные учётные данные дают `401 Unauthorized`. Передавайте токен в заголовке `Authorization: Bearer <accessToken>`.
+
+Чтение опубликованных товаров, категорий и тегов доступно без входа. Пользователь с ролью `Editor` также видит неопубликованные товары. Создание, изменение и удаление товаров, категорий и тегов, а также изменение публикации требуют наличия роли `Editor`.
+
+## API
+
+Основные маршруты:
+
+- `/api/auth/login` — вход и получение JWT.
+- `/api/products` — список товаров (`GET`) и создание (`POST`). Список поддерживает `search`, `categoryId`, `tagId`, `createdFrom`, `createdTo`, `sort`, `order`, `page` и `pageSize`. Допустимые значения `sort`: `name`, `createdAt`, `updatedAt`; `order`: `asc`, `desc`; `pageSize` — от 1 до 100.
+- `/api/products/{id}` — получение, полное обновление (`PUT`) и удаление товара.
+- `/api/products/{id}/publication` — изменение публикации через `PUT`.
+- `/api/categories` и `/api/tags` — чтение списков (`GET`) и создание (`POST`); маршруты с `/{id}` поддерживают обновление (`PUT`) и удаление (`DELETE`). Запись доступна только `Editor`.
+
+Для создания и полного обновления товара передавайте `externalKey`, `name`, `price`, непустой список существующих `categoryIds` и `images`. `tagIds` может быть пустым; список `images` обязателен, но может быть пустым. Цена должна быть от 0 до `9999999999999999.99`. Для каждого изображения укажите абсолютный HTTP- или HTTPS-URL. В `products.http` приведены примеры запросов; токен и ID созданных категорий, тегов и товаров нужно подставить вручную из ответов API.
+
+## Тесты
+
+В проекте есть API-тесты с SQLite в памяти и интеграционные тесты PostgreSQL; отдельных модульных тестов сервисов нет. API-тесты можно запустить отдельно:
+
+```powershell
+dotnet test EntityCatalog.Tests/EntityCatalog.Tests.csproj --filter FullyQualifiedName~ProductAccessTests
+```
+
+Для полного набора задайте `ENTITYCATALOG_TEST_POSTGRES` со строкой подключения к выделенной тестовой базе и запустите:
+
+```powershell
+$env:ENTITYCATALOG_TEST_POSTGRES = "Host=localhost;Port=5432;Database=entitycatalog_test;Username=<пользователь>;Password=<пароль>"
+dotnet test EntityCatalog.Tests/EntityCatalog.Tests.csproj
+```
+
+Имя тестовой базы должно быть `entitycatalog_test` или начинаться с `entitycatalog_test_`. Тесты создают в ней временную схему и удаляют её после завершения; подключение должно разрешать создание и удаление схем. Не указывайте рабочую базу данных.
